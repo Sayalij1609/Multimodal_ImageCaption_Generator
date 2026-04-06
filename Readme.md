@@ -1,169 +1,194 @@
-# VisionCap — CNN + LSTM Image Captioning
+# VisionScript — Multimodal Image Captioning
 
-A multimodal image captioning system built from scratch using a ResNet50 CNN encoder and LSTM decoder, trained on the Flickr8k dataset.
+> **Local AI · No cloud · No API key · Powered by Ollama + LLaVA**
+
+A sleek, dark-themed web app that generates multiple caption styles for any image using a locally-run LLaVA vision model. Upload an image, optionally add a custom question, and get instant structured captions — all running on your own machine.
+
+---
+
+## Preview
+
+```
+┌──────────────────────────────────────┐
+│  ● VISIONSCRIPT        ollama·llava  │
+│                                      │
+│  DESCRIBE                            │
+│  ANYTHING                            │
+│                                      │
+│  [ Drop image here ]                 │
+│                                      │
+│  ◈ One-Sentence Caption              │
+│  ◉ Scene Description                 │
+│  ◇ Creative / Poetic                 │
+└──────────────────────────────────────┘
+```
+
+---
+
+## Features
+
+- **4 caption modes** — concise, detailed, creative/poetic, and custom prompt
+- **Drag & drop** or click-to-upload image input (JPG, PNG, WEBP, BMP — up to 16 MB)
+- **Custom questions** — ask anything about the image (e.g. *"What emotion does this convey?"*)
+- **One-click copy** for each generated caption
+- **Skeleton loaders** while the model is generating
+- **100% local** — no data leaves your machine
+- **Health endpoint** at `/health` to check Ollama status
+
+---
+
+## Requirements
+
+| Requirement | Details |
+|-------------|---------|
+| Python | 3.8+ |
+| Ollama | [https://ollama.com](https://ollama.com) |
+| LLaVA model | Pulled via `ollama pull llava` |
+| Python packages | `flask`, `requests`, `Pillow`, `werkzeug` |
+
+---
+
+## Installation
+
+### 1. Install Ollama
+
+Download and install from [https://ollama.com](https://ollama.com), then pull the LLaVA model:
+
+```bash
+ollama pull llava
+```
+
+> LLaVA (~4 GB) will be downloaded once and cached locally.
+
+### 2. Clone or download this project
+
+```
+project/
+├── app.py
+└── static/
+    └── index.html
+```
+
+Place `index.html` inside a `static/` folder next to `app.py`.
+
+### 3. Install Python dependencies
+
+```bash
+pip install flask requests Pillow werkzeug
+```
+
+---
+
+## Running the App
+
+**Terminal 1 — Start Ollama:**
+```bash
+ollama serve
+```
+
+**Terminal 2 — Start Flask:**
+```bash
+python app.py
+```
+
+Then open your browser at:
+
+```
+http://localhost:5000
+```
 
 ---
 
 ## Project Structure
 
 ```
-Multimodal_captioning_1/
-├── train.py                  ← Train the model on Flickr8k
-├── app.py                    ← Flask web server (run this for the UI)
-├── predict.py                ← Caption a single image from terminal
-├── requirements.txt          ← Python dependencies
-├── model_checkpoint.pth      ← Saved after training (auto-generated)
-├── vocab.pkl                 ← Vocabulary saved after training (auto-generated)
+project/
+├── app.py              # Flask backend — handles uploads, calls Ollama API
 ├── static/
-│   └── index.html            ← Web UI
-├── uploads/                  ← Uploaded images stored here (auto-created)
-└── flickr8k/
-    ├── Images/               ← 8,000 .jpg image files
-    └── captions.txt          ← CSV with columns: image, caption
+│   └── index.html      # Full frontend — UI, styles, JavaScript
+├── uploads/            # Temporary image storage (auto-created)
+└── README.md
 ```
 
 ---
 
-## Setup
+## API Reference
 
-### 1. Install dependencies
+### `POST /caption`
+
+Upload an image and receive generated captions.
+
+**Request** — `multipart/form-data`:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `image` | file | ✅ | Image file (JPG, PNG, WEBP, BMP) |
+| `prompt` | string | ❌ | Custom question about the image |
+
+**Response** — JSON:
+
+```json
+{
+  "captions": {
+    "plain":    "A cat sitting on a windowsill at sunset.",
+    "detail":   "The scene shows a tabby cat perched on a wooden windowsill...",
+    "creative": "Silhouetted against the dying light, a small guardian watches...",
+    "custom":   "The cat appears calm and contemplative."
+  },
+  "filename": "cat.jpg"
+}
+```
+
+### `GET /health`
+
+Returns Ollama connection status.
+
+```json
+{ "ollama": "running", "model": "llava" }
+```
+
+---
+
+## Configuration
+
+Edit these constants at the top of `app.py` to customize behaviour:
+
+```python
+OLLAMA_URL  = "http://localhost:11434/api/generate"   # Ollama endpoint
+MODEL_NAME  = "llava"                                  # Model to use
+```
+
+To use a different model (e.g. `llava:13b` or `bakllava`):
 
 ```bash
-pip install torch torchvision flask Pillow werkzeug pandas numpy nltk
+ollama pull llava:13b
 ```
 
-### 2. Download Flickr8k dataset
-
-Download from Kaggle: https://www.kaggle.com/datasets/adityajn105/flickr8k
-
-Unzip and place it so the structure matches:
-```
-flickr8k/
-  Images/       ← all .jpg files here
-  captions.txt  ← CSV file here
-```
+Then update `MODEL_NAME = "llava:13b"` in `app.py`.
 
 ---
 
-## Usage
+## Troubleshooting
 
-### Step 1 — Train the model
-
-```bash
-python train.py
-```
-
-This trains the CNN + LSTM model and saves:
-- `model_checkpoint.pth` — best model weights
-- `vocab.pkl` — learned vocabulary
-
-**Training config** (edit at top of `train.py`):
-
-| Setting | Default | Description |
-|---|---|---|
-| `NUM_IMAGES` | `1000` | Number of images to train on (`None` = all 8000) |
-| `EPOCHS` | `15` | Number of training epochs |
-| `BATCH_SIZE` | `16` | Images per batch |
-| `EMBED_DIM` | `256` | Feature vector size |
-| `HIDDEN_DIM` | `512` | LSTM hidden state size |
-
-**Estimated training time:**
-
-| Images | GPU (RTX 30xx) | CPU |
-|---|---|---|
-| 1000 | ~4–6 min | ~15–20 min |
-| 2000 | ~8–12 min | ~30–40 min |
-| 8000 | ~30–45 min | ~3–4 hrs |
+| Problem | Fix |
+|---------|-----|
+| `Ollama is not running` | Run `ollama serve` in a separate terminal |
+| `ollama pull` is slow | LLaVA is ~4 GB — wait for the download to complete |
+| Images render poorly | App auto-resizes to 800×800px for faster inference |
+| Port 5000 in use | Change `port=5000` to another value in `app.py` |
+| `ModuleNotFoundError` | Run `pip install flask requests Pillow werkzeug` |
 
 ---
 
-### Step 2 — Run the web UI
+## Tech Stack
 
-```bash
-python app.py
-```
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Vanilla HTML/CSS/JS — no build step |
+| Backend | Python + Flask |
+| Vision Model | LLaVA via Ollama |
+| Image Processing | Pillow (PIL) |
 
-Open in browser: **http://localhost:5000**
-
-Upload any image using drag & drop or the file picker. The model generates a caption instantly.
-
----
-
-### Caption a single image from terminal
-
-```bash
-python predict.py --image path/to/image.jpg
-```
 
 ---
 
-## Model Architecture
-
-```
-Image (224×224)
-    │
-    ▼
-ResNet50 (pretrained on ImageNet)
-    │  Last FC replaced with Linear(2048 → 256)
-    ▼
-Feature Vector (256-dim)
-    │
-    ▼
-LSTM Decoder
-    │  Embedding(vocab_size, 256) → LSTM(256, 512) → Linear(512, vocab_size)
-    ▼
-Beam Search (k=3)
-    │
-    ▼
-Caption text
-```
-
-### Key design choices
-
-- **ResNet50 encoder** — pretrained on ImageNet, only the last block and FC layer are fine-tuned
-- **LSTM decoder** — learns to generate words conditioned on the image feature
-- **Teacher forcing** — during training, ground truth tokens are fed as input at each step
-- **Beam search** — at inference, keeps top-3 candidate sequences and picks the best
-- **CrossEntropyLoss** — ignores `<PAD>` tokens, so variable-length captions train cleanly
-
----
-
-## Evaluation
-
-After training, BLEU scores are printed automatically:
-
-```
-BLEU-1: 0.38    ← word-level overlap with human captions
-BLEU-4: 0.12    ← 4-gram phrase overlap (stricter)
-```
-
-Higher is better. BLEU-1 above 0.35 on 1000 images is expected and acceptable.
-
----
-
-## Dependencies
-
-| Package | Purpose |
-|---|---|
-| `torch` + `torchvision` | Model training and ResNet50 |
-| `flask` | Web server for the UI |
-| `Pillow` | Image loading and resizing |
-| `nltk` | BLEU score tokenization |
-| `pandas` | Reading captions.txt |
-| `numpy` | Dataset shuffling |
-| `werkzeug` | Secure file uploads |
-
----
-
-## GPU Setup (recommended)
-
-Check if PyTorch detects your GPU:
-```bash
-python -c "import torch; print(torch.cuda.is_available())"
-```
-
-If it prints `False`, reinstall PyTorch with CUDA:
-```bash
-pip uninstall torch torchvision -y
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-```
