@@ -3,536 +3,448 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Multimodal Image Captioning</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>Vision Caption Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
-  :root {
-    --bg: #0a0a0f;
-    --surface: #12121a;
-    --surface2: #1a1a26;
-    --border: #2a2a3e;
-    --accent: #6c63ff;
-    --accent2: #00e5c0;
-    --text: #e8e8f0;
-    --muted: #6b6b80;
-    --success: #00e5c0;
-    --font-display: 'Syne', sans-serif;
-    --font-mono: 'DM Mono', monospace;
-  }
+:root{
+  --bg:        #06070d;
+  --bg1:       #0b0d17;
+  --bg2:       #10131f;
+  --bg3:       #161926;
+  --border:    #1c2035;
+  --border2:   #252a42;
+  --violet:    #7c6dfa;
+  --violet-lo: rgba(124,109,250,0.12);
+  --violet-hi: #a598ff;
+  --amber:     #f5a623;
+  --amber-lo:  rgba(245,166,35,0.10);
+  --emerald:   #22d3a5;
+  --emer-lo:   rgba(34,211,165,0.10);
+  --rose:      #f43f5e;
+  --text:      #dde1f5;
+  --text2:     #6b7194;
+  --text3:     #353956;
+  --ff-head:  'Bebas Neue', cursive;
+  --ff-body:  'DM Sans', sans-serif;
+  --ff-code:  'Fira Code', monospace;
+}
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font-mono);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 40px 20px 80px;
-  }
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--ff-body);min-height:100vh;overflow-x:hidden;cursor:default}
 
-  /* Subtle grid background */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(var(--border) 1px, transparent 1px),
-      linear-gradient(90deg, var(--border) 1px, transparent 1px);
-    background-size: 40px 40px;
-    opacity: 0.3;
-    pointer-events: none;
-    z-index: 0;
-  }
+/* ── Background ── */
+.bg-wrap{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bg-wrap::before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 15% 20%, rgba(124,109,250,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 35% at 85% 75%, rgba(34,211,165,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(245,166,35,0.03) 0%, transparent 60%);
+}
+.noise{position:absolute;inset:0;opacity:0.03;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.grid-lines{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:48px 48px;opacity:0.18}
 
-  .container {
-    width: 100%;
-    max-width: 760px;
-    position: relative;
-    z-index: 1;
-  }
+/* ── Layout ── */
+.shell{position:relative;z-index:1;display:grid;grid-template-columns:1fr 480px;min-height:100vh;max-width:1280px;margin:0 auto}
+@media(max-width:900px){.shell{grid-template-columns:1fr;grid-template-rows:auto 1fr}}
 
-  /* Header */
-  header {
-    text-align: center;
-    margin-bottom: 48px;
-    animation: fadeUp 0.6s ease both;
-  }
+/* ── Left panel ── */
+.left{padding:52px 48px;display:flex;flex-direction:column;border-right:1px solid var(--border)}
+@media(max-width:900px){.left{border-right:none;border-bottom:1px solid var(--border);padding:36px 24px}}
 
-  .tag {
-    display: inline-block;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.15em;
-    color: var(--accent2);
-    border: 1px solid var(--accent2);
-    padding: 4px 12px;
-    border-radius: 2px;
-    margin-bottom: 16px;
-    text-transform: uppercase;
-  }
+.logo-mark{display:flex;align-items:center;gap:10px;margin-bottom:56px;animation:fadeUp 0.6s ease both}
+.logo-hex{width:36px;height:36px;position:relative}
+.logo-hex svg{width:100%;height:100%}
+.logo-text{font-family:var(--ff-head);font-size:22px;letter-spacing:0.08em;color:var(--text)}
+.logo-text span{color:var(--violet-hi)}
 
-  h1 {
-    font-family: var(--font-display);
-    font-size: clamp(28px, 5vw, 44px);
-    font-weight: 800;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
-    color: var(--text);
-  }
+.hero-tag{font-family:var(--ff-code);font-size:11px;letter-spacing:0.14em;color:var(--violet);text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:8px;animation:fadeUp 0.6s 0.05s ease both}
+.hero-tag::before{content:'';width:28px;height:1px;background:var(--violet)}
 
-  h1 span { color: var(--accent); }
+h1{font-family:var(--ff-head);font-size:clamp(52px,7vw,88px);line-height:0.95;letter-spacing:0.03em;margin-bottom:24px;animation:fadeUp 0.6s 0.1s ease both}
+h1 .stroke{-webkit-text-stroke:1.5px var(--violet-hi);color:transparent}
 
-  .subtitle {
-    margin-top: 12px;
-    color: var(--muted);
-    font-size: 13px;
-    line-height: 1.6;
-  }
+.hero-desc{font-size:15px;line-height:1.7;color:var(--text2);max-width:400px;margin-bottom:40px;font-weight:300;animation:fadeUp 0.6s 0.15s ease both}
 
-  /* Upload Zone */
-  .upload-zone {
-    background: var(--surface);
-    border: 2px dashed var(--border);
-    border-radius: 12px;
-    padding: 48px 32px;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
-    position: relative;
-    overflow: hidden;
-    animation: fadeUp 0.6s 0.1s ease both;
-  }
+/* Pipeline */
+.pipeline{display:flex;flex-direction:column;gap:0;margin-bottom:auto;animation:fadeUp 0.6s 0.2s ease both}
+.pipe-step{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);position:relative;cursor:default;transition:background 0.2s}
+.pipe-step:last-child{border-bottom:none}
+.pipe-step:hover .pipe-dot{box-shadow:0 0 12px var(--violet)}
+.pipe-num{font-family:var(--ff-code);font-size:10px;color:var(--text3);width:20px;text-align:right}
+.pipe-dot{width:8px;height:8px;border-radius:50%;background:var(--violet);flex-shrink:0;transition:box-shadow 0.3s}
+.pipe-connector{position:absolute;left:44px;bottom:-1px;width:1px;height:1px;background:var(--border)}
+.pipe-info{}
+.pipe-title{font-family:var(--ff-code);font-size:12px;color:var(--text);letter-spacing:0.05em}
+.pipe-sub{font-size:11px;color:var(--text2);margin-top:2px}
 
-  .upload-zone:hover, .upload-zone.drag-over {
-    border-color: var(--accent);
-    background: #12122a;
-  }
+.version-tag{margin-top:40px;font-family:var(--ff-code);font-size:10px;color:var(--text3);letter-spacing:0.08em;animation:fadeUp 0.6s 0.25s ease both}
 
-  .upload-zone input[type="file"] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
-    width: 100%;
-    height: 100%;
-  }
+/* ── Right panel ── */
+.right{padding:52px 40px;display:flex;flex-direction:column;gap:20px;overflow-y:auto}
+@media(max-width:900px){.right{padding:28px 24px}}
 
-  .upload-icon {
-    width: 52px;
-    height: 52px;
-    margin: 0 auto 16px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+/* ── Drop zone ── */
+.dropzone{
+  border:1.5px dashed var(--border2);
+  border-radius:12px;
+  background:var(--bg1);
+  min-height:220px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  cursor:pointer;position:relative;overflow:hidden;
+  transition:border-color 0.25s,background 0.25s;
+  animation:fadeUp 0.6s 0.1s ease both;
+}
+.dropzone::before{content:'';position:absolute;inset:0;background:var(--violet-lo);opacity:0;transition:opacity 0.25s}
+.dropzone:hover::before,.dropzone.drag-over::before{opacity:1}
+.dropzone:hover,.dropzone.drag-over{border-color:var(--violet)}
+.dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 
-  .upload-icon svg { width: 24px; height: 24px; stroke: var(--accent); fill: none; stroke-width: 1.5; }
+.dz-icon{width:52px;height:52px;border-radius:50%;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;transition:border-color 0.25s,transform 0.25s;position:relative;z-index:1}
+.dropzone:hover .dz-icon{border-color:var(--violet);transform:translateY(-2px)}
+.dz-icon svg{width:20px;height:20px;stroke:var(--violet);fill:none;stroke-width:1.5}
+.dz-main{font-family:var(--ff-head);font-size:18px;letter-spacing:0.08em;color:var(--text);position:relative;z-index:1}
+.dz-sub{font-family:var(--ff-code);font-size:10px;color:var(--text2);letter-spacing:0.08em;position:relative;z-index:1}
 
-  .upload-main { font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--text); }
-  .upload-sub  { font-size: 12px; color: var(--muted); margin-top: 6px; }
+/* ── Preview card ── */
+.preview-card{
+  border:1px solid var(--border);border-radius:12px;background:var(--bg1);
+  overflow:hidden;display:none;
+  animation:slideUp 0.35s ease both;
+}
+.preview-card.show{display:block}
+.preview-img-area{background:#000;max-height:260px;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative}
+.preview-img-area img{width:100%;max-height:260px;object-fit:contain;display:block}
+.preview-img-area::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,transparent 60%,rgba(6,7,13,0.6));pointer-events:none}
+.preview-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border)}
+.preview-name{font-family:var(--ff-code);font-size:10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+.clear-btn{font-family:var(--ff-code);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--rose);background:none;border:1px solid rgba(244,63,94,0.3);padding:4px 10px;border-radius:4px;cursor:pointer;transition:border-color 0.2s,background 0.2s}
+.clear-btn:hover{border-color:var(--rose);background:rgba(244,63,94,0.08)}
 
-  /* Preview area */
-  .preview-area {
-    display: none;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-    animation: fadeUp 0.4s ease both;
-  }
+/* ── Run button ── */
+.run-btn{
+  width:100%;padding:16px;border:none;border-radius:10px;
+  background:var(--violet);color:#fff;
+  font-family:var(--ff-head);font-size:20px;letter-spacing:0.12em;
+  cursor:pointer;position:relative;overflow:hidden;
+  transition:transform 0.15s,opacity 0.15s;
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  animation:fadeUp 0.6s 0.2s ease both;
+}
+.run-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.12),transparent);pointer-events:none}
+.run-btn:hover:not(:disabled){transform:translateY(-2px);opacity:0.92}
+.run-btn:active:not(:disabled){transform:translateY(0)}
+.run-btn:disabled{opacity:0.3;cursor:not-allowed;transform:none}
+.run-spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:none}
+.run-btn.loading .run-spinner{display:block}
+.run-btn.loading .run-label{opacity:0.7}
 
-  .preview-area.visible { display: block; }
+/* ── Result ── */
+.result-wrap{display:none;animation:slideUp 0.4s ease both}
+.result-wrap.show{display:block}
 
-  .preview-image-wrap {
-    position: relative;
-    background: #000;
-    max-height: 340px;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+.result-card{
+  border:1px solid var(--border);border-radius:12px;background:var(--bg1);
+  overflow:hidden;position:relative;
+}
+.result-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--violet),var(--emerald))}
 
-  .preview-image-wrap img {
-    width: 100%;
-    max-height: 340px;
-    object-fit: contain;
-    display: block;
-  }
+.result-top{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 0}
+.result-live{display:flex;align-items:center;gap:7px;font-family:var(--ff-code);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--emerald)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--emerald);animation:pulse-dot 1.8s ease-in-out infinite}
+.copy-btn{font-family:var(--ff-code);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);background:none;border:1px solid var(--border2);padding:4px 10px;border-radius:4px;cursor:pointer;transition:color 0.2s,border-color 0.2s}
+.copy-btn:hover{color:var(--violet-hi);border-color:var(--violet)}
 
-  .change-btn {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: rgba(10,10,15,0.85);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    padding: 6px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    backdrop-filter: blur(4px);
-  }
+.caption-zone{padding:22px 18px 18px}
+.caption-out{font-family:var(--ff-head);font-size:clamp(22px,4vw,34px);letter-spacing:0.06em;color:var(--text);line-height:1.25;word-break:break-word;min-height:40px}
+.caption-out .word{display:inline-block;opacity:0;transform:translateY(6px);animation:wordPop 0.35s ease forwards}
 
-  /* Prompt section */
-  .prompt-section {
-    padding: 20px 24px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
+.result-divider{height:1px;background:var(--border);margin:0 18px}
 
-  .prompt-label {
-    font-size: 11px;
-    color: var(--muted);
-    white-space: nowrap;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
+.result-meta{display:flex;align-items:center;gap:20px;padding:12px 18px;flex-wrap:wrap}
+.meta-chip{font-family:var(--ff-code);font-size:9px;color:var(--text3);letter-spacing:0.08em;display:flex;align-items:center;gap:5px}
+.meta-chip .val{color:var(--violet-hi)}
+.meta-chip .val.green{color:var(--emerald)}
 
-  .prompt-input {
-    flex: 1;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 8px 12px;
-    color: var(--text);
-    font-family: var(--font-mono);
-    font-size: 13px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
+/* ── History ── */
+.history-wrap{display:none;animation:fadeUp 0.4s ease both}
+.history-wrap.show{display:block}
+.history-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.history-label{font-family:var(--ff-code);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);white-space:nowrap}
+.history-line{flex:1;height:1px;background:var(--border)}
+.history-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.hist-item{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;cursor:pointer;transition:border-color 0.2s,transform 0.2s}
+.hist-item:hover{border-color:var(--border2);transform:translateY(-2px)}
+.hist-item img{width:100%;height:72px;object-fit:cover;display:block;filter:brightness(0.8);transition:filter 0.2s}
+.hist-item:hover img{filter:brightness(1)}
+.hist-cap{padding:5px 7px;font-family:var(--ff-code);font-size:8px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:0.03em}
 
-  .prompt-input:focus { border-color: var(--accent); }
-  .prompt-input::placeholder { color: var(--muted); }
+/* ── Error ── */
+.err-box{background:rgba(244,63,94,0.07);border:1px solid rgba(244,63,94,0.3);border-radius:8px;padding:12px 16px;font-family:var(--ff-code);font-size:11px;color:var(--rose);letter-spacing:0.04em;display:none}
+.err-box.show{display:block}
 
-  /* Generate button */
-  .generate-btn {
-    display: block;
-    width: calc(100% - 48px);
-    margin: 0 24px 24px;
-    padding: 14px;
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-family: var(--font-display);
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    cursor: pointer;
-    transition: opacity 0.2s, transform 0.1s;
-    position: relative;
-    overflow: hidden;
-  }
+/* ── Skeleton ── */
+.skel{background:linear-gradient(90deg,var(--bg2) 25%,var(--bg3) 50%,var(--bg2) 75%);background-size:300% 100%;animation:shimmer 1.3s infinite;border-radius:4px}
 
-  .generate-btn:hover { opacity: 0.9; }
-  .generate-btn:active { transform: scale(0.99); }
-  .generate-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+/* ── Scrollbar ── */
+.right::-webkit-scrollbar{width:4px}
+.right::-webkit-scrollbar-track{background:transparent}
+.right::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
-  .generate-btn .btn-spinner {
-    display: none;
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    margin-right: 8px;
-    vertical-align: middle;
-  }
-
-  .generate-btn.loading .btn-spinner { display: inline-block; }
-  .generate-btn.loading .btn-text { opacity: 0.7; }
-
-  /* Results */
-  .results {
-    display: none;
-    margin-top: 24px;
-    animation: fadeUp 0.4s ease both;
-  }
-
-  .results.visible { display: block; }
-
-  .results-header {
-    font-family: var(--font-display);
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: var(--muted);
-    margin-bottom: 12px;
-  }
-
-  .caption-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 18px 20px;
-    margin-bottom: 10px;
-    transition: border-color 0.2s;
-    position: relative;
-  }
-
-  .caption-card:hover { border-color: #3a3a58; }
-
-  .caption-type {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--muted);
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .caption-type .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--accent2);
-    flex-shrink: 0;
-  }
-
-  .caption-type .dot.purple { background: var(--accent); }
-  .caption-type .dot.amber  { background: #f5a623; }
-  .caption-type .dot.pink   { background: #ff6b9d; }
-
-  .caption-text {
-    font-family: var(--font-mono);
-    font-size: 14px;
-    color: var(--text);
-    line-height: 1.6;
-  }
-
-  .copy-caption {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: color 0.2s;
-  }
-
-  .copy-caption:hover { color: var(--text); }
-
-  /* Skeleton loader */
-  .skeleton {
-    background: linear-gradient(90deg, var(--surface) 25%, var(--surface2) 50%, var(--surface) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.2s infinite;
-    border-radius: 4px;
-    height: 16px;
-    margin: 6px 0;
-  }
-
-  /* Upload again */
-  .reset-btn {
-    display: block;
-    width: 100%;
-    margin-top: 16px;
-    padding: 10px;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    font-family: var(--font-mono);
-    font-size: 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: border-color 0.2s, color 0.2s;
-  }
-
-  .reset-btn:hover { border-color: var(--text); color: var(--text); }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  @keyframes shimmer {
-    from { background-position: 200% 0; }
-    to   { background-position: -200% 0; }
-  }
+/* ── Animations ── */
+@keyframes fadeUp  {from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp {from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin    {to{transform:rotate(360deg)}}
+@keyframes shimmer {from{background-position:300% 0}to{background-position:-300% 0}}
+@keyframes wordPop {to{opacity:1;transform:translateY(0)}}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
 </style>
 </head>
 <body>
-<div class="container">
+<div class="bg-wrap">
+  <div class="noise"></div>
+  <div class="grid-lines"></div>
+</div>
 
-  <header>
-    <div class="tag">LLM Practical </div>
-    <h1>Multimodal<br><span>Image Captioning</span></h1>
-    <p class="subtitle">Upload any image.</p>
-  </header>
+<div class="shell">
 
-  <!-- Upload zone -->
-  <div class="upload-zone" id="uploadZone">
-    <input type="file" id="fileInput" accept="image/*">
-    <div class="upload-icon">
-      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+  <!-- ── LEFT ── -->
+  <div class="left">
+    <div class="logo-mark">
+      <div class="logo-hex">
+        <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M18 3L32 11V25L18 33L4 25V11L18 3Z" stroke="#7c6dfa" stroke-width="1.2" fill="rgba(124,109,250,0.08)"/>
+          <path d="M18 10L25 14V22L18 26L11 22V14L18 10Z" fill="#7c6dfa" opacity="0.5"/>
+        </svg>
+      </div>
+      <span class="logo-text">Vision<span>Cap</span></span>
     </div>
-    <div class="upload-main">Drop image here or click to upload</div>
-    <div class="upload-sub">Supports JPG, PNG, WEBP — max 16MB</div>
+
+    <div class="hero-tag">Image Captioning System</div>
+
+    <h1>
+      SEE.<br>
+      <span class="stroke">THINK.</span><br>
+      CAPTION.
+    </h1>
+
+    <p class="hero-desc">
+      A deep learning model that reads visual scenes and generates natural language descriptions — built from scratch using a CNN encoder and LSTM decoder.
+    </p>
+
+    <div class="pipeline">
+      <div class="pipe-step">
+        <span class="pipe-num">01</span>
+        <span class="pipe-dot"></span>
+        <div class="pipe-info">
+          <div class="pipe-title">ResNet50 Encoder</div>
+          <div class="pipe-sub">Extracts 256-dim visual features</div>
+        </div>
+      </div>
+      <div class="pipe-step">
+        <span class="pipe-num">02</span>
+        <span class="pipe-dot" style="background:var(--emerald)"></span>
+        <div class="pipe-info">
+          <div class="pipe-title">Feature Projection</div>
+          <div class="pipe-sub">CNN output → embedding space</div>
+        </div>
+      </div>
+      <div class="pipe-step">
+        <span class="pipe-num">03</span>
+        <span class="pipe-dot" style="background:var(--amber)"></span>
+        <div class="pipe-info">
+          <div class="pipe-title">LSTM Decoder</div>
+          <div class="pipe-sub">Generates words sequentially</div>
+        </div>
+      </div>
+      <div class="pipe-step">
+        <span class="pipe-num">04</span>
+        <span class="pipe-dot" style="background:var(--violet-hi)"></span>
+        <div class="pipe-info">
+          <div class="pipe-title">Beam Search (k=3)</div>
+          <div class="pipe-sub">Picks best caption candidate</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="version-tag">ResNet50 + LSTM · Flickr8k · v1.0</div>
   </div>
 
-  <!-- Preview + generate -->
-  <div class="preview-area" id="previewArea">
-    <div class="preview-image-wrap">
-      <img id="previewImg" src="" alt="Preview">
-      <button class="change-btn" onclick="resetAll()">Change image</button>
+  <!-- ── RIGHT ── -->
+  <div class="right">
+
+    <!-- Drop zone -->
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept="image/*">
+      <div class="dz-icon">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <div class="dz-main">Drop image here</div>
+      <div class="dz-sub">or click to browse · JPG · PNG · WEBP</div>
     </div>
 
-    <div class="prompt-section">
-      <span class="prompt-label">Custom prompt</span>
-      <input class="prompt-input" id="customPrompt" type="text" placeholder="e.g. what is happening in this image?">
+    <!-- Preview -->
+    <div class="preview-card" id="previewCard">
+      <div class="preview-img-area">
+        <img id="previewImg" src="" alt="">
+      </div>
+      <div class="preview-bar">
+        <span class="preview-name" id="previewName">—</span>
+        <button class="clear-btn" onclick="reset()">✕ Remove</button>
+      </div>
     </div>
 
-    <button class="generate-btn" id="generateBtn" onclick="generateCaptions()">
-      <span class="btn-spinner"></span>
-      <span class="btn-text">Generate Captions</span>
+    <!-- Error -->
+    <div class="err-box" id="errBox"></div>
+
+    <!-- Run -->
+    <button class="run-btn" id="runBtn" onclick="run()" disabled>
+      <span class="run-spinner"></span>
+      <span class="run-label">GENERATE CAPTION</span>
     </button>
-  </div>
 
-  <!-- Results -->
-  <div class="results" id="results">
-    <div class="results-header">Generated Captions</div>
-    <div id="captionCards"></div>
-    <button class="reset-btn" onclick="resetAll()">Upload another image</button>
-  </div>
+    <!-- Result -->
+    <div class="result-wrap" id="resultWrap">
+      <div class="result-card">
+        <div class="result-top">
+          <div class="result-live"><span class="live-dot"></span>Output</div>
+          <button class="copy-btn" onclick="doCopy()">Copy</button>
+        </div>
+        <div class="caption-zone">
+          <div class="caption-out" id="captionOut"></div>
+        </div>
+        <div class="result-divider"></div>
+        <div class="result-meta">
+          <div class="meta-chip">model: <span class="val">resnet50+lstm</span></div>
+          <div class="meta-chip">decoder: <span class="val">beam-3</span></div>
+          <div class="meta-chip">status: <span class="val green" id="statusTag">ready</span></div>
+        </div>
+      </div>
+    </div>
 
+    <!-- History -->
+    <div class="history-wrap" id="histWrap">
+      <div class="history-head">
+        <span class="history-label">Recent</span>
+        <div class="history-line"></div>
+      </div>
+      <div class="history-grid" id="histGrid"></div>
+    </div>
+
+  </div>
 </div>
 
 <script>
-  let selectedFile = null;
+let file = null, lastCaption = '', history = [];
 
-  const uploadZone  = document.getElementById('uploadZone');
-  const fileInput   = document.getElementById('fileInput');
-  const previewArea = document.getElementById('previewArea');
-  const previewImg  = document.getElementById('previewImg');
-  const generateBtn = document.getElementById('generateBtn');
-  const results     = document.getElementById('results');
-  const cards       = document.getElementById('captionCards');
+const dropzone   = document.getElementById('dropzone');
+const fileInput  = document.getElementById('fileInput');
+const previewCard= document.getElementById('previewCard');
+const previewImg = document.getElementById('previewImg');
+const previewName= document.getElementById('previewName');
+const runBtn     = document.getElementById('runBtn');
+const resultWrap = document.getElementById('resultWrap');
+const captionOut = document.getElementById('captionOut');
+const errBox     = document.getElementById('errBox');
+const histWrap   = document.getElementById('histWrap');
+const histGrid   = document.getElementById('histGrid');
+const statusTag  = document.getElementById('statusTag');
 
-  // Drag and drop
-  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
-  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-  uploadZone.addEventListener('drop', e => {
-    e.preventDefault();
-    uploadZone.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) handleFile(file);
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault(); dropzone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) load(f);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) load(fileInput.files[0]); });
+
+function load(f) {
+  file = f;
+  const reader = new FileReader();
+  reader.onload = e => {
+    previewImg.src = e.target.result;
+    previewName.textContent = f.name;
+    dropzone.style.display = 'none';
+    previewCard.classList.add('show');
+    runBtn.disabled = false;
+    resultWrap.classList.remove('show');
+    hideErr();
+  };
+  reader.readAsDataURL(f);
+}
+
+async function run() {
+  if (!file) return;
+  runBtn.disabled = true;
+  runBtn.classList.add('loading');
+  statusTag.textContent = 'processing';
+  statusTag.style.color = 'var(--amber)';
+  resultWrap.classList.add('show');
+  captionOut.innerHTML = '<div class="skel" style="height:30px;width:75%;margin-bottom:8px"></div><div class="skel" style="height:30px;width:50%"></div>';
+  hideErr();
+
+  const fd = new FormData();
+  fd.append('image', file);
+
+  try {
+    const res  = await fetch('/caption', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.error) { showErr(data.error); resultWrap.classList.remove('show'); return; }
+    lastCaption = data.caption;
+    animateWords(data.caption);
+    statusTag.textContent = 'done';
+    statusTag.style.color = 'var(--emerald)';
+    addHistory(previewImg.src, data.caption, file.name);
+  } catch(e) {
+    showErr('Cannot reach server. Make sure app.py is running on port 5000.');
+    resultWrap.classList.remove('show');
+    statusTag.textContent = 'error';
+    statusTag.style.color = 'var(--rose)';
+  } finally {
+    runBtn.disabled = false;
+    runBtn.classList.remove('loading');
+  }
+}
+
+function animateWords(text) {
+  captionOut.innerHTML = text.toUpperCase().split(' ')
+    .map((w, i) => `<span class="word" style="animation-delay:${i * 0.055}s">${w}&nbsp;</span>`).join('');
+}
+
+function addHistory(src, cap, name) {
+  history.unshift({ src, cap, name });
+  if (history.length > 6) history.pop();
+  histWrap.classList.add('show');
+  histGrid.innerHTML = history.map(h => `
+    <div class="hist-item" title="${h.cap}">
+      <img src="${h.src}" alt="${h.name}">
+      <div class="hist-cap">${h.cap}</div>
+    </div>`).join('');
+}
+
+function doCopy() {
+  if (!lastCaption) return;
+  navigator.clipboard.writeText(lastCaption).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied ✓';
+    setTimeout(() => btn.textContent = 'Copy', 1800);
   });
+}
 
-  fileInput.addEventListener('change', () => {
-    if (fileInput.files[0]) handleFile(fileInput.files[0]);
-  });
+function showErr(msg) { errBox.textContent = '⚠ ' + msg; errBox.classList.add('show'); }
+function hideErr()    { errBox.classList.remove('show'); }
 
-  function handleFile(file) {
-    selectedFile = file;
-    const reader = new FileReader();
-    reader.onload = e => {
-      previewImg.src = e.target.result;
-      uploadZone.style.display = 'none';
-      previewArea.classList.add('visible');
-      results.classList.remove('visible');
-      cards.innerHTML = '';
-    };
-    reader.readAsDataURL(file);
-  }
-
-  async function generateCaptions() {
-    if (!selectedFile) return;
-    const prompt = document.getElementById('customPrompt').value.trim();
-
-    generateBtn.disabled = true;
-    generateBtn.classList.add('loading');
-    generateBtn.querySelector('.btn-text').textContent = 'Generating...';
-
-    // Show skeletons
-    results.classList.add('visible');
-    cards.innerHTML = skeletonHTML();
-
-    const formData = new FormData();
-    formData.append('image', selectedFile);
-    if (prompt) formData.append('prompt', prompt);
-
-    try {
-      const res  = await fetch('/caption', { method: 'POST', body: formData });
-      const data = await res.json();
-
-      if (data.error) { showError(data.error); return; }
-
-      const c = data.captions;
-      const cardDefs = [
-        { dot: "",       label: "One sentence caption",          text: c.plain  },
-        { dot: 'purple', label: 'Detailed scene description',       text: c.detail  },
-        { dot: 'amber',  label: 'Creative poetic caption',           text: c.creative },
-      ];
-      if (c.custom) cardDefs.push({ dot: 'pink', label: `Custom: "${prompt}"`, text: c.custom });
-
-      cards.innerHTML = cardDefs.map(d => `
-        <div class="caption-card">
-          <div class="caption-type">
-            <span class="dot ${d.dot}"></span>${d.label}
-          </div>
-          <div class="caption-text">${d.text}</div>
-          <button class="copy-caption" onclick="copyText(this, '${d.text.replace(/'/g,"\\'")}')">copy</button>
-        </div>`).join('');
-
-    } catch(err) {
-      showError('Could not connect to server. Make sure app.py is running.');
-    } finally {
-      generateBtn.disabled = false;
-      generateBtn.classList.remove('loading');
-      generateBtn.querySelector('.btn-text').textContent = 'Generate Captions';
-    }
-  }
-
-  function skeletonHTML() {
-    return Array(3).fill(`
-      <div class="caption-card">
-        <div class="skeleton" style="width:40%;height:10px;margin-bottom:12px"></div>
-        <div class="skeleton" style="width:90%"></div>
-        <div class="skeleton" style="width:65%;margin-top:6px"></div>
-      </div>`).join('');
-  }
-
-  function showError(msg) {
-    cards.innerHTML = `<div class="caption-card"><div class="caption-text" style="color:#ff6b6b">${msg}</div></div>`;
-  }
-
-  function copyText(btn, text) {
-    navigator.clipboard.writeText(text).then(() => {
-      btn.textContent = 'copied!';
-      setTimeout(() => btn.textContent = 'copy', 1500);
-    });
-  }
-
-  function resetAll() {
-    selectedFile = null;
-    fileInput.value = '';
-    previewArea.classList.remove('visible');
-    uploadZone.style.display = '';
-    results.classList.remove('visible');
-    cards.innerHTML = '';
-    document.getElementById('customPrompt').value = '';
-  }
+function reset() {
+  file = null; fileInput.value = '';
+  previewCard.classList.remove('show');
+  dropzone.style.display = '';
+  runBtn.disabled = true;
+  resultWrap.classList.remove('show');
+  hideErr();
+}
 </script>
 </body>
 </html>
